@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sampleRecipes } from '../data/recipes';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRecipeContext } from '../context/RecipeContext';
 import { Recipe } from '../types/Recipe';
 
 interface RecipeDetailScreenProps {
@@ -24,42 +25,24 @@ interface RecipeDetailScreenProps {
 
 export default function RecipeDetailScreen({ route, navigation }: RecipeDetailScreenProps) {
   const { recipeId } = route.params;
+  const { recipes, isFavorite, toggleFavorite } = useRecipeContext();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    const foundRecipe = sampleRecipes.find(r => r.id === recipeId);
+    const foundRecipe = recipes.find(r => r.id === recipeId);
     setRecipe(foundRecipe || null);
-    checkIfFavorite();
-  }, [recipeId]);
+  }, [recipeId, recipes]);
 
-  const checkIfFavorite = async () => {
+  const handleShare = async () => {
+    if (!recipe) return;
+    
     try {
-      const favorites = await AsyncStorage.getItem('favoriteRecipes');
-      if (favorites) {
-        const favoriteIds = JSON.parse(favorites);
-        setIsFavorite(favoriteIds.includes(recipeId));
-      }
+      await Share.share({
+        message: `Kolla in detta recept: ${recipe.title}\n${recipe.description}`,
+        title: recipe.title,
+      });
     } catch (error) {
-      console.error('Error checking favorites:', error);
-    }
-  };
-
-  const toggleFavorite = async () => {
-    try {
-      const favorites = await AsyncStorage.getItem('favoriteRecipes');
-      let favoriteIds = favorites ? JSON.parse(favorites) : [];
-      
-      if (isFavorite) {
-        favoriteIds = favoriteIds.filter((id: string) => id !== recipeId);
-      } else {
-        favoriteIds.push(recipeId);
-      }
-      
-      await AsyncStorage.setItem('favoriteRecipes', JSON.stringify(favoriteIds));
-      setIsFavorite(!isFavorite);
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error('Error sharing recipe:', error);
     }
   };
 

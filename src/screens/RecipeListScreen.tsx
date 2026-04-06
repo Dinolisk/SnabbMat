@@ -10,23 +10,17 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { sampleRecipes, categories } from '../data/recipes';
+import { categories } from '../data/recipes';
 import { Recipe } from '../types/Recipe';
+import { useRecipeContext } from '../context/RecipeContext';
+import { useFilteredRecipes } from '../hooks/useFilteredRecipes';
+import { RecipeCard } from '../components/RecipeCard';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export default function RecipeListScreen({ navigation }: any) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Alla');
   const [visibleRecipes, setVisibleRecipes] = useState(5);
-
-  const filteredRecipes = sampleRecipes.filter(recipe => {
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesCategory = selectedCategory === 'Alla' || recipe.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const { searchQuery, selectedCategory, setSearchQuery, setSelectedCategory } = useRecipeContext();
+  const filteredRecipes = useFilteredRecipes();
 
   const displayedRecipes = filteredRecipes.slice(0, visibleRecipes);
   const hasMoreRecipes = visibleRecipes < filteredRecipes.length;
@@ -35,26 +29,12 @@ export default function RecipeListScreen({ navigation }: any) {
     setVisibleRecipes(prev => Math.min(prev + 5, filteredRecipes.length));
   };
 
+  const handleRecipePress = (recipe: Recipe) => {
+    navigation.navigate('RecipeDetail', { recipeId: recipe.id });
+  };
+
   const renderRecipeItem = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity 
-      style={styles.recipeCard}
-      onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
-    >
-      <View style={styles.recipeImage}>
-        <Text style={styles.recipeEmoji}>{item.image}</Text>
-      </View>
-      <View style={styles.recipeInfo}>
-        <Text style={styles.recipeTitle}>{item.title}</Text>
-        <Text style={styles.recipeDescription}>{item.description}</Text>
-        <View style={styles.recipeMeta}>
-          <Text style={styles.recipeTime}>
-            ⏱️ {item.prepTime + item.cookTime} min
-          </Text>
-          <Text style={styles.recipeDifficulty}>{item.difficulty}</Text>
-          <Text style={styles.recipeCategory}>{item.category}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <RecipeCard recipe={item} onPress={handleRecipePress} />
   );
 
   const renderCategoryFilter = (category: string) => (
@@ -81,7 +61,7 @@ export default function RecipeListScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#FF9F4A', '#FFB366', '#FFC085']}
+        colors={['#2E7D32', '#43A047', '#66BB6A']}
         style={styles.header}
       >
         <TouchableOpacity 
@@ -183,16 +163,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#FFFFFF',
     marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: 'white',
-    opacity: 0.9,
+    fontSize: 18,
+    color: '#FFFFFF',
+    opacity: 1,
     textAlign: 'center',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   searchContainer: {
     padding: 15,

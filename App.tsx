@@ -11,6 +11,9 @@ import FavoritesScreen from './src/screens/FavoritesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RecipeDetailScreen from './src/screens/RecipeDetailScreen';
 
+// Import context
+import { RecipeProvider } from './src/context/RecipeContext';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -71,52 +74,59 @@ function FavoritesStack() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Tab.Navigator
-        screenOptions={({ route }: any) => ({
-          tabBarIcon: ({ focused, color, size }: any) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
+    <RecipeProvider>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        <Tab.Navigator
+          screenOptions={({ route }: any) => ({
+            tabBarIcon: ({ focused, color, size }: any) => {
+              let iconName: keyof typeof Ionicons.glyphMap;
 
-            if (route.name === 'Recept') {
-              iconName = focused ? 'restaurant' : 'restaurant-outline';
-            } else if (route.name === 'Favoriter') {
-              iconName = focused ? 'heart' : 'heart-outline';
-            } else if (route.name === 'Profil') {
-              iconName = focused ? 'person' : 'person-outline';
-            } else {
-              iconName = 'help-outline';
-            }
+              if (route.name === 'Recept') {
+                iconName = focused ? 'restaurant' : 'restaurant-outline';
+              } else if (route.name === 'Favoriter') {
+                iconName = focused ? 'heart' : 'heart-outline';
+              } else if (route.name === 'Profil') {
+                iconName = focused ? 'person' : 'person-outline';
+              } else {
+                iconName = 'help-outline';
+              }
 
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: '#FF9F4A',
-          tabBarInactiveTintColor: '#8E8E93',
-          headerStyle: {
-            backgroundColor: '#FF9F4A',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        })}
-      >
-        <Tab.Screen 
-          name="Recept" 
-          component={RecipeStack} 
-          options={{ headerShown: false }}
-        />
-        <Tab.Screen 
-          name="Favoriter" 
-          component={FavoritesStack} 
-          options={{ headerShown: false }}
-        />
-        <Tab.Screen 
-          name="Profil" 
-          component={ProfileScreen} 
-          options={{ headerShown: false }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+              return <Ionicons name={iconName} size={size} color={color} />;
+            },
+            tabBarActiveTintColor: '#fff',
+            tabBarInactiveTintColor: '#C8E6C9',
+            tabBarStyle: {
+              backgroundColor: '#2E7D32',
+              borderTopColor: '#4CAF50',
+              borderTopWidth: 1,
+            },
+            headerStyle: {
+              backgroundColor: '#2E7D32',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          })}
+        >
+          <Tab.Screen 
+            name="Recept" 
+            component={RecipeStack} 
+            options={{ headerShown: false }}
+          />
+          <Tab.Screen 
+            name="Favoriter" 
+            component={FavoritesStack} 
+            options={{ headerShown: false }}
+          />
+          <Tab.Screen 
+            name="Profil" 
+            component={ProfileScreen} 
+            options={{ headerShown: false }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </RecipeProvider>
   );
 }
