@@ -7,17 +7,24 @@ export interface Recipe {
   servings: number;
   difficulty: 'Lätt' | 'Medel' | 'Svår';
   category: string;
-  image: string;
+  image: string; // emoji or image URL
   ingredients: Ingredient[];
   instructions: string[];
   tags: string[];
   isFavorite?: boolean;
+  // ICA API specific fields
+  icaImageId?: number;
+  icaAverageRating?: string;
+  icaOfferCount?: number;
+  icaIngredientCount?: number;
+  icaCookingTime?: string;
 }
 
 export interface Ingredient {
   name: string;
   amount: string;
   unit: string;
+  isSection?: boolean;
 }
 
 export interface RecipeCategory {

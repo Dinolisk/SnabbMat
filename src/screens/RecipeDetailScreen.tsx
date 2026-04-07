@@ -6,8 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Alert,
+  Image,
   Share,
+  Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,11 +29,19 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
   const { recipeId } = route.params;
   const { recipes, isFavorite, toggleFavorite } = useRecipeContext();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const { width } = useWindowDimensions();
+  const isWideLayout = width >= 980;
+  const contentMaxWidth = 1320;
 
   useEffect(() => {
     const foundRecipe = recipes.find(r => r.id === recipeId);
     setRecipe(foundRecipe || null);
   }, [recipeId, recipes]);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [recipe?.image]);
 
   const handleShare = async () => {
     if (!recipe) return;
@@ -54,12 +64,25 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
     );
   }
 
-  const renderIngredient = (ingredient: any, index: number) => (
-    <View key={index} style={styles.ingredientItem}>
-      <Text style={styles.ingredientAmount}>{ingredient.amount} {ingredient.unit}</Text>
-      <Text style={styles.ingredientName}>{ingredient.name}</Text>
-    </View>
-  );
+  const renderIngredient = (ingredient: any, index: number) => {
+    if (ingredient.isSection) {
+      return (
+        <View key={index} style={styles.ingredientSectionRow}>
+          <Text style={styles.ingredientSectionTitle}>{ingredient.name}</Text>
+        </View>
+      );
+    }
+
+    const amountText = [ingredient.amount, ingredient.unit].filter(Boolean).join(' ').trim();
+    return (
+      <View key={index} style={styles.ingredientItem}>
+        <Text style={styles.ingredientAmount}>{amountText || ' '}</Text>
+        <Text style={styles.ingredientName}>
+          {ingredient.name}
+        </Text>
+      </View>
+    );
+  };
 
   const renderInstruction = (instruction: string, index: number) => (
     <View key={index} style={styles.instructionItem}>
@@ -70,46 +93,61 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
     </View>
   );
 
+  const hasImageUrl = recipe.image.startsWith('http://') || recipe.image.startsWith('https://');
+  const sourceUrl = (recipe as Recipe & { sourceUrl?: string }).sourceUrl;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header Image */}
-        <View style={styles.headerImage}>
-          <Text style={styles.recipeEmoji}>{recipe.image}</Text>
-        </View>
-
-        {/* Recipe Info */}
-        <View style={styles.recipeInfo}>
-          <View style={styles.titleRow}>
-            <Text style={styles.recipeTitle}>{recipe.title}</Text>
-            <TouchableOpacity
-              style={styles.favoriteButton}
-              onPress={toggleFavorite}
-            >
-              <Ionicons
-                name={isFavorite ? 'heart' : 'heart-outline'}
-                size={24}
-                color={isFavorite ? '#ff4444' : '#666'}
-              />
-            </TouchableOpacity>
+        <View style={[styles.pageInner, isWideLayout && { maxWidth: contentMaxWidth }]}>
+        <View style={[styles.heroSection, isWideLayout && styles.heroSectionWide]}>
+          {/* Recipe Info */}
+          <View style={[styles.recipeInfo, isWideLayout && styles.recipeInfoWide]}>
+            <View style={styles.titleRow}>
+              <Text style={styles.recipeTitle}>{recipe.title}</Text>
+              <TouchableOpacity
+                style={styles.favoriteButton}
+                onPress={() => toggleFavorite(recipe.id)}
+              >
+                <Ionicons
+                  name={isFavorite(recipe.id) ? 'heart' : 'heart-outline'}
+                  size={24}
+                  color={isFavorite(recipe.id) ? '#ff4444' : '#666'}
+                />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.recipeDescription}>{recipe.description}</Text>
+            
+            {/* Recipe Stats */}
+            <View style={styles.recipeStats}>
+              <View style={styles.statItem}>
+                <Ionicons name="time-outline" size={20} color="#2E7D32" />
+                <Text style={styles.statText}>{recipe.prepTime + recipe.cookTime} min</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="people-outline" size={20} color="#2E7D32" />
+                <Text style={styles.statText}>{recipe.servings} portioner</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="star-outline" size={20} color="#2E7D32" />
+                <Text style={styles.statText}>{recipe.difficulty}</Text>
+              </View>
+            </View>
           </View>
-          
-          <Text style={styles.recipeDescription}>{recipe.description}</Text>
-          
-          {/* Recipe Stats */}
-          <View style={styles.recipeStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="time-outline" size={20} color="#2E7D32" />
-              <Text style={styles.statText}>{recipe.prepTime + recipe.cookTime} min</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={20} color="#2E7D32" />
-              <Text style={styles.statText}>{recipe.servings} portioner</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="star-outline" size={20} color="#2E7D32" />
-              <Text style={styles.statText}>{recipe.difficulty}</Text>
-            </View>
+
+          {/* Header Image */}
+          <View style={[styles.headerImage, isWideLayout && styles.headerImageWide]}>
+            {hasImageUrl && !imageFailed ? (
+              <Image
+                source={{ uri: recipe.image }}
+                style={styles.recipeImage}
+                resizeMode={isWideLayout ? 'contain' : 'cover'}
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <Text style={styles.recipeEmoji}>{recipe.image}</Text>
+            )}
           </View>
         </View>
 
@@ -119,7 +157,20 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
           <Text style={styles.sectionSubtitle}>{recipe.servings} portioner</Text>
           
           <View style={styles.ingredientsList}>
-            {recipe.ingredients.map(renderIngredient)}
+            {recipe.ingredients.length > 0 ? (
+              recipe.ingredients.map(renderIngredient)
+            ) : (
+              <View>
+                <Text style={styles.placeholderText}>
+                  Ingredienser saknas i denna datakalla for receptet.
+                </Text>
+                {sourceUrl ? (
+                  <TouchableOpacity onPress={() => Linking.openURL(sourceUrl)}>
+                    <Text style={styles.linkText}>Oppna originalrecept hos ICA</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
           </View>
         </View>
 
@@ -128,7 +179,20 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
           <Text style={styles.sectionTitle}>Gör så här</Text>
           
           <View style={styles.instructionsList}>
-            {recipe.instructions.map(renderInstruction)}
+            {recipe.instructions.length > 0 ? (
+              recipe.instructions.map(renderInstruction)
+            ) : (
+              <View>
+                <Text style={styles.placeholderText}>
+                  Tillagningssteg saknas i denna datakalla for receptet.
+                </Text>
+                {sourceUrl ? (
+                  <TouchableOpacity onPress={() => Linking.openURL(sourceUrl)}>
+                    <Text style={styles.linkText}>Oppna tillagningssteg hos ICA</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
           </View>
         </View>
 
@@ -165,6 +229,7 @@ export default function RecipeDetailScreen({ route, navigation }: RecipeDetailSc
             </View>
           </View>
         </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,11 +240,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF4E6',
   },
+  pageInner: {
+    width: '100%',
+    alignSelf: 'center',
+  },
+  heroSection: {
+    marginBottom: 10,
+  },
+  heroSectionWide: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: 'white',
+  },
   headerImage: {
     height: 200,
     backgroundColor: '#E8F5E8',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  headerImageWide: {
+    flex: 1.2,
+    height: 520,
+    backgroundColor: '#F5F7F8',
+  },
+  recipeImage: {
+    width: '100%',
+    height: '100%',
   },
   recipeEmoji: {
     fontSize: 80,
@@ -187,7 +274,11 @@ const styles = StyleSheet.create({
   recipeInfo: {
     backgroundColor: 'white',
     padding: 20,
-    marginBottom: 10,
+  },
+  recipeInfoWide: {
+    flex: 0.9,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
   },
   titleRow: {
     flexDirection: 'row',
@@ -250,6 +341,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  ingredientSectionRow: {
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  ingredientSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+  },
   ingredientAmount: {
     fontSize: 16,
     fontWeight: '600',
@@ -288,6 +388,17 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 24,
     flex: 1,
+  },
+  placeholderText: {
+    fontSize: 15,
+    color: '#666',
+    fontStyle: 'italic',
+    lineHeight: 22,
+  },
+  linkText: {
+    marginTop: 8,
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   tipBox: {
     flexDirection: 'row',

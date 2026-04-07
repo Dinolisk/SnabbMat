@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Recipe } from '../types/Recipe';
@@ -18,6 +19,7 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   const { isFavorite, toggleFavorite } = useRecipeContext();
   const [scaleAnim] = React.useState(new Animated.Value(1));
+  const [imageFailed, setImageFailed] = React.useState(false);
 
   const handlePress = () => {
     Animated.sequence([
@@ -41,11 +43,25 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
     toggleFavorite(recipe.id);
   };
 
+  const hasImageUrl = recipe.image.startsWith('http://') || recipe.image.startsWith('https://');
+  React.useEffect(() => {
+    setImageFailed(false);
+  }, [recipe.image]);
+
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity style={styles.card} onPress={handlePress}>
         <View style={styles.imageContainer}>
-          <Text style={styles.emoji}>{recipe.image}</Text>
+          {hasImageUrl && !imageFailed ? (
+            <Image
+              source={{ uri: recipe.image }}
+              style={styles.recipeImage}
+              resizeMode="cover"
+              onError={() => setImageFailed(true)}
+            />
+          ) : (
+            <Text style={styles.emoji}>{recipe.image}</Text>
+          )}
           <TouchableOpacity 
             style={styles.favoriteButton}
             onPress={handleFavoritePress}
@@ -125,6 +141,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  recipeImage: {
+    width: '100%',
+    height: '100%',
   },
   emoji: {
     fontSize: 40,

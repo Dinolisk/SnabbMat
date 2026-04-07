@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { PageContainer } from '../components/PageContainer';
 
 export default function ProfileScreen() {
   const handleSettingPress = (setting: string) => {
@@ -32,6 +33,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <PageContainer>
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
@@ -90,6 +92,7 @@ export default function ProfileScreen() {
         <Text style={styles.footerText}>SnabbMat v1.0.0</Text>
         <Text style={styles.footerText}>© 2024 SnabbMat</Text>
       </View>
+      </PageContainer>
     </ScrollView>
   );
 }

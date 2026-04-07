@@ -10,6 +10,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sampleRecipes } from '../data/recipes';
 import { Recipe } from '../types/Recipe';
+import { PageContainer } from '../components/PageContainer';
 
 export default function FavoritesScreen({ navigation }: any) {
   const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
@@ -95,6 +96,7 @@ export default function FavoritesScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <PageContainer>
       <View style={styles.titleContainer}>
         <Text style={styles.titleText}>Mina Favoriter</Text>
         <Text style={styles.subtitleText}>
@@ -113,6 +115,7 @@ export default function FavoritesScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
         />
       )}
+      </PageContainer>
     </View>
   );
 }

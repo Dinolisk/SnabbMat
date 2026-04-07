@@ -1,4 +1,14 @@
-import React, { useState } from 'react';
+/**
+ * RecipeListScreen - Huvudskärm för att visa och filtrera recept
+ * 
+ * Funktioner:
+ * - Visa lista med recept från ICA och lokala recept
+ * - Sökfunktion för att hitta specifika recept
+ * - Kategorifiltrering med navigering
+ * - Lazy loading med 12 recept per sida
+ * - "Visa fler recept" knapp för att ladda mer
+ */
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,58 +17,152 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
-  ScrollView,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { categories } from '../data/recipes';
 import { Recipe } from '../types/Recipe';
 import { useRecipeContext } from '../context/RecipeContext';
-import { useFilteredRecipes } from '../hooks/useFilteredRecipes';
 import { RecipeCard } from '../components/RecipeCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageContainer } from '../components/PageContainer';
 
 export default function RecipeListScreen({ navigation }: any) {
-  const [visibleRecipes, setVisibleRecipes] = useState(5);
-  const { searchQuery, selectedCategory, setSearchQuery, setSelectedCategory } = useRecipeContext();
-  const filteredRecipes = useFilteredRecipes();
+  // State för att hantera antal synliga recept och kategorinavigering
+  const [visibleRecipes, setVisibleRecipes] = useState(12); 
+  const [categoryOffset, setCategoryOffset] = useState(0); 
+  const { width } = useWindowDimensions(); // För responsiv design
 
+  // Hämta kontextdata för recept och funktioner
+  const { 
+    searchQuery, 
+    selectedCategory, 
+    setSearchQuery, 
+    setSelectedCategory,
+    recipes,
+    isLoading,
+    apiError,
+    loadRecipesFromICA
+  } = useRecipeContext();
+
+  // Ladda recept från ICA när komponenten monteras
+  useEffect(() => {
+    loadRecipesFromICA();
+  }, []);
+
+  // Filtrera recept baserat på sök och vald kategori
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter(recipe => {
+      // Sök i titel, beskrivning och taggar
+      const matchesSearch = searchQuery === '' ||
+        recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      // Matcha kategori eller visa alla
+      const matchesCategory = selectedCategory === 'Alla' || recipe.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [recipes, searchQuery, selectedCategory]);
+
+  // Hantera visning av recept - visa 12 initialt, ladda 12 mer per klick
   const displayedRecipes = filteredRecipes.slice(0, visibleRecipes);
-  const hasMoreRecipes = visibleRecipes < filteredRecipes.length;
+  const hasMoreRecipes = visibleRecipes < filteredRecipes.length; // Visa knapp om det finns fler recept
 
+  // Ladda 12 nya recept när användaren klickar på "Visa fler recept"
   const loadMoreRecipes = () => {
-    setVisibleRecipes(prev => Math.min(prev + 5, filteredRecipes.length));
+    setVisibleRecipes(prev => Math.min(prev + 12, filteredRecipes.length));
   };
 
+  // Navigera till receptdetaljer när användaren klickar på ett recept
   const handleRecipePress = (recipe: Recipe) => {
     navigation.navigate('RecipeDetail', { recipeId: recipe.id });
   };
 
+  // Rendera ett enskilt receptkort
   const renderRecipeItem = ({ item }: { item: Recipe }) => (
     <RecipeCard recipe={item} onPress={handleRecipePress} />
   );
 
-  const renderCategoryFilter = (category: string) => (
+  // Skapa metadata för kategorier (ikon och färg)
+  const categoryMeta = useMemo(() => {
+    const map = new Map<string, { icon: string; color: string }>();
+    categories.forEach((cat) => map.set(cat.name, { icon: cat.icon, color: cat.color }));
+    return map;
+  }, []);
+
+  // Rendera en enskild kategoriknapp för filtrering
+  const renderCategoryFilter = (category: { name: string; icon: string; color: string }) => (
     <TouchableOpacity
-      key={category}
+      key={category.name}
       style={[
-        styles.categoryFilter,
-        selectedCategory === category && styles.selectedCategoryFilter
+        styles.categoryCardFilter,
+        selectedCategory === category.name && styles.selectedCategoryCardFilter
       ]}
-      onPress={() => setSelectedCategory(category)}
+      onPress={() => setSelectedCategory(category.name)}
     >
+      <View style={[styles.categoryFilterIcon, { backgroundColor: category.color }]}>
+        <Text style={styles.categoryFilterEmoji}>{category.icon}</Text>
+      </View>
       <Text style={[
         styles.categoryFilterText,
-        selectedCategory === category && styles.selectedCategoryFilterText
-      ]}>
-        {category}
+        selectedCategory === category.name && styles.selectedCategoryFilterText
+      ]} numberOfLines={2}>
+        {category.name}
       </Text>
     </TouchableOpacity>
   );
 
-  const allCategories = ['Alla', ...categories.map(cat => cat.name)];
+  // Hämta unika kategorinamn från recepten och sortera alfabetiskt
+  const availableCategoryNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    recipes.forEach((recipe) => {
+      counts.set(recipe.category, (counts.get(recipe.category) || 0) + 1);
+    });
+    return [...counts.entries()]
+      .filter(([, count]) => count > 0)
+      .map(([name]) => name)
+      .sort((a, b) => a.localeCompare(b, 'sv')); // Svensk sortering
+  }, [recipes]);
+
+  const mergedCategories = useMemo(() => {
+    return ['Alla', ...availableCategoryNames].map((name) => {
+      if (name === 'Alla') {
+        return { name, icon: '🍽️', color: '#E8F5E8' };
+      }
+      const meta = categoryMeta.get(name);
+      return {
+        name,
+        icon: meta?.icon || '🍴',
+        color: meta?.color || '#EDEDED',
+      };
+    });
+  }, [availableCategoryNames, categoryMeta]);
+
+  // Beräkna hur många kategorier som får plats baserat på skärmbredd
+  const visibleCategoryCount = width < 420 ? 3 : width < 620 ? 5 : width < 900 ? 7 : 9;
+  const pagedCategories = mergedCategories.slice(categoryOffset, categoryOffset + visibleCategoryCount);
+  const canPageLeft = categoryOffset > 0; // Kan gå till föregående sida?
+  const canPageRight = categoryOffset + visibleCategoryCount < mergedCategories.length; // Kan gå till nästa sida?
+
+  // Återställ kategorinavigering när antalet kategorier ändras
+  useEffect(() => {
+    setCategoryOffset(0);
+  }, [mergedCategories.length]);
+
+  // Navigera till föregående/uppsätt kategorisida
+  const handlePrevCategories = () => {
+    setCategoryOffset((prev: number) => Math.max(0, prev - visibleCategoryCount));
+  };
+
+  const handleNextCategories = () => {
+    setCategoryOffset((prev: number) => Math.min(prev + visibleCategoryCount, Math.max(0, mergedCategories.length - visibleCategoryCount)));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
+      <PageContainer>
       {/* Header */}
       <LinearGradient
         colors={['#2E7D32', '#43A047', '#66BB6A']}
@@ -88,63 +192,53 @@ export default function RecipeListScreen({ navigation }: any) {
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
         />
-      </View>
-
-      {/* Categories */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Kategorier</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesContainer}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity key={category.id} style={styles.categoryCard}>
-              <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                <Text style={styles.categoryEmoji}>{category.icon}</Text>
-              </View>
-              <Text style={styles.categoryName}>{category.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {isLoading && (
+          <Text style={styles.loadingText}>Laddar live-recept från ICA...</Text>
+        )}
       </View>
 
       {/* Category Filters */}
       <View style={styles.filtersContainer}>
-        <FlatList
-          data={allCategories}
-          renderItem={({ item }) => renderCategoryFilter(item)}
-          keyExtractor={(item) => item}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersList}
-        />
+        <TouchableOpacity
+          style={[styles.categoryPagerButton, !canPageLeft && styles.categoryPagerButtonDisabled]}
+          onPress={handlePrevCategories}
+          disabled={!canPageLeft}
+        >
+          <Text style={styles.categoryPagerButtonText}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.filtersList}>
+          {pagedCategories.map(renderCategoryFilter)}
+        </View>
+        <TouchableOpacity
+          style={[styles.categoryPagerButton, !canPageRight && styles.categoryPagerButtonDisabled]}
+          onPress={handleNextCategories}
+          disabled={!canPageRight}
+        >
+          <Text style={styles.categoryPagerButtonText}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Recipe Count */}
-      <View style={styles.recipeCountContainer}>
-        <Text style={styles.recipeCountText}>
-          Recept Visar {displayedRecipes.length} av {filteredRecipes.length} stycken
-        </Text>
-      </View>
+      {/* Moved to bottom with Load More button */}
 
       {/* Recipe List */}
-      <FlatList
+      <FlatList<Recipe>
         data={displayedRecipes}
         renderItem={renderRecipeItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: Recipe) => item.id}
         contentContainerStyle={styles.recipesList}
         showsVerticalScrollIndicator={false}
+        ListFooterComponent={
+          hasMoreRecipes ? (
+            <View style={styles.loadMoreContainer}>
+              <TouchableOpacity style={styles.loadMoreButton} onPress={loadMoreRecipes}>
+                <Text style={styles.loadMoreText}>Visa fler recept</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
       />
-
-      {/* Load More Button */}
-      {hasMoreRecipes && (
-        <View style={styles.loadMoreContainer}>
-          <TouchableOpacity style={styles.loadMoreButton} onPress={loadMoreRecipes}>
-            <Text style={styles.loadMoreText}>Visa fler recept</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      </PageContainer>
     </SafeAreaView>
   );
 }
@@ -155,9 +249,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF4E6',
   },
   header: {
-    padding: 30,
-    paddingTop: 50,
+    padding: 20,
+    paddingTop: 20,
     alignItems: 'center',
+    backgroundColor: '#2E7D32', // Green for ICA theme
+    marginHorizontal: 20,
+    borderRadius: 16,
   },
   headerContent: {
     alignItems: 'center',
@@ -182,8 +279,12 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   searchContainer: {
-    padding: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -200,153 +301,97 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8F0F2',
   },
-  section: {
-    margin: 20,
-    marginTop: 10,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-  },
-  categoryCard: {
-    alignItems: 'center',
-    marginRight: 20,
-    width: 80,
-  },
-  categoryIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  categoryEmoji: {
-    fontSize: 24,
-  },
-  categoryName: {
-    fontSize: 12,
-    textAlign: 'center',
-    color: '#666',
-    fontWeight: '500',
-  },
   filtersContainer: {
     backgroundColor: 'white',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   filtersList: {
-    paddingHorizontal: 15,
-  },
-  categoryFilter: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginRight: 10,
-  },
-  selectedCategoryFilter: {
-    backgroundColor: '#2E7D32',
-  },
-  categoryFilterText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  selectedCategoryFilterText: {
-    color: 'white',
-  },
-  recipesList: {
-    padding: 15,
-  },
-  recipeCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 15,
+    flex: 1,
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
   },
-  recipeImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: '#f0f0f0',
+  categoryCardFilter: {
+    width: 88,
     borderRadius: 12,
+    backgroundColor: '#f7f7f7',
+    marginRight: 10,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+  },
+  categoryPagerButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E8F5E8',
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 10,
+    marginHorizontal: 6,
   },
-  recipeEmoji: {
-    fontSize: 32,
+  categoryPagerButtonDisabled: {
+    opacity: 0.35,
   },
-  recipeInfo: {
-    flex: 1,
-    padding: 15,
-    justifyContent: 'center',
-  },
-  recipeTitle: {
+  categoryPagerButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    lineHeight: 18,
+    color: '#1B5E20',
+    fontWeight: '700',
   },
-  recipeDescription: {
-    fontSize: 14,
-    color: '#666',
+  selectedCategoryCardFilter: {
+    backgroundColor: '#E8F5E8',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+  },
+  categoryFilterIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  recipeMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  categoryFilterEmoji: {
+    fontSize: 18,
   },
-  recipeTime: {
-    fontSize: 12,
-    color: '#4A7C59',
-    fontWeight: '500',
-  },
-  recipeDifficulty: {
-    fontSize: 12,
+  categoryFilterText: {
+    fontSize: 11,
     color: '#666',
     fontWeight: '500',
+    textAlign: 'center',
   },
-  recipeCategory: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
+  selectedCategoryFilterText: {
+    color: '#1B5E20',
   },
   recipeCountContainer: {
-    backgroundColor: 'white',
-    padding: 15,
-    marginHorizontal: 15,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: 'transparent',
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
   },
   recipeCountText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#B71C1C',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  recipesList: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   loadMoreContainer: {
     padding: 20,
@@ -367,5 +412,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingText: {
+    color: '#666',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });
