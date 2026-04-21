@@ -307,6 +307,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginHorizontal: 20,
     marginTop: 12,
+    marginBottom: 10,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   loadMoreContainer: {
-    padding: 20,
+    padding: 1,
     alignItems: 'center',
   },
   loadMoreButton: {
