@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,83 +6,71 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  Platform,
+  Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sampleRecipes } from '../data/recipes';
+import { useRecipeContext } from '../context/RecipeContext';
 import { Recipe } from '../types/Recipe';
 import { PageContainer } from '../components/PageContainer';
 
 export default function FavoritesScreen({ navigation }: any) {
-  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
+  const { recipes, favorites, toggleFavorite } = useRecipeContext();
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
-
-  const loadFavorites = async () => {
-    try {
-      const favorites = await AsyncStorage.getItem('favoriteRecipes');
-      if (favorites) {
-        const favoriteIds = JSON.parse(favorites);
-        const recipes = sampleRecipes.filter(recipe => favoriteIds.includes(recipe.id));
-        setFavoriteRecipes(recipes);
-      }
-    } catch (error) {
-      console.error('Error loading favorites:', error);
-    }
-  };
-
-  const removeFavorite = async (recipeId: string) => {
-    try {
-      const favorites = await AsyncStorage.getItem('favoriteRecipes');
-      let favoriteIds = favorites ? JSON.parse(favorites) : [];
-      
-      favoriteIds = favoriteIds.filter((id: string) => id !== recipeId);
-      await AsyncStorage.setItem('favoriteRecipes', JSON.stringify(favoriteIds));
-      
-      setFavoriteRecipes(prev => prev.filter(recipe => recipe.id !== recipeId));
-    } catch (error) {
-      console.error('Error removing favorite:', error);
-    }
-  };
+  const favoriteRecipes = recipes.filter(recipe => favorites.includes(recipe.id));
 
   const confirmRemoveFavorite = (recipe: Recipe) => {
-    Alert.alert(
-      'Ta bort favorit',
-      `Vill du ta bort "${recipe.title}" från dina favoriter?`,
-      [
-        { text: 'Avbryt', style: 'cancel' },
-        { text: 'Ta bort', style: 'destructive', onPress: () => removeFavorite(recipe.id) },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Ta bort "${recipe.title}" från dina favoriter?`)) {
+        toggleFavorite(recipe.id);
+      }
+    } else {
+      Alert.alert(
+        'Ta bort favorit',
+        `Vill du ta bort "${recipe.title}" från dina favoriter?`,
+        [
+          { text: 'Avbryt', style: 'cancel' },
+          { text: 'Ta bort', style: 'destructive', onPress: () => toggleFavorite(recipe.id) },
+        ],
+      );
+    }
   };
 
-  const renderRecipeItem = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity 
-      style={styles.recipeCard}
-      onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
-    >
-      <View style={styles.recipeImage}>
-        <Text style={styles.recipeEmoji}>{item.image}</Text>
-      </View>
-      <View style={styles.recipeInfo}>
-        <Text style={styles.recipeTitle}>{item.title}</Text>
-        <Text style={styles.recipeDescription}>{item.description}</Text>
-        <View style={styles.recipeMeta}>
-          <Text style={styles.recipeTime}>
-            ⏱️ {item.prepTime + item.cookTime} min
-          </Text>
-          <Text style={styles.recipeDifficulty}>{item.difficulty}</Text>
-        </View>
-      </View>
+  const renderRecipeItem = ({ item }: { item: Recipe }) => {
+    const hasImageUrl = item.image?.startsWith('http');
+    const totalTime = (item.prepTime ?? 0) + (item.cookTime ?? 0);
+
+    return (
       <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => confirmRemoveFavorite(item)}
+        style={styles.recipeCard}
+        onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
       >
-        <Text style={styles.removeButtonText}>✕</Text>
+        <View style={styles.recipeImageContainer}>
+          {hasImageUrl ? (
+            <Image source={{ uri: item.image }} style={styles.recipeImage} resizeMode="cover" />
+          ) : (
+            <Text style={styles.recipeEmoji}>{item.image}</Text>
+          )}
+        </View>
+        <View style={styles.recipeInfo}>
+          <Text style={styles.recipeTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.recipeDescription} numberOfLines={1}>{item.description}</Text>
+          <View style={styles.recipeMeta}>
+            {totalTime > 0 && (
+              <Text style={styles.recipeTime}>⏱️ {totalTime} min</Text>
+            )}
+            <Text style={styles.recipeDifficulty}>{item.difficulty}</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => confirmRemoveFavorite(item)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.removeButtonText}>✕</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -97,24 +85,24 @@ export default function FavoritesScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <PageContainer>
-      <View style={styles.titleContainer}>
-        <Text style={styles.titleText}>Mina Favoriter</Text>
-        <Text style={styles.subtitleText}>
-          {favoriteRecipes.length} recept sparade
-        </Text>
-      </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.titleText}>Mina Favoriter</Text>
+          <Text style={styles.subtitleText}>
+            {favoriteRecipes.length} recept sparade
+          </Text>
+        </View>
 
-      {favoriteRecipes.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <FlatList
-          data={favoriteRecipes}
-          renderItem={renderRecipeItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.recipesList}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        {favoriteRecipes.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <FlatList
+            data={favoriteRecipes}
+            renderItem={renderRecipeItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.recipesList}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </PageContainer>
     </View>
   );
@@ -161,8 +149,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden',
   },
-  recipeImage: {
+  recipeImageContainer: {
     width: 80,
     height: 80,
     backgroundColor: '#f0f0f0',
@@ -170,29 +159,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     margin: 10,
+    overflow: 'hidden',
+  },
+  recipeImage: {
+    width: '100%',
+    height: '100%',
   },
   recipeEmoji: {
     fontSize: 32,
   },
   recipeInfo: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 12,
+    paddingRight: 40,
     justifyContent: 'center',
   },
   recipeTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
   },
   recipeDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   recipeMeta: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   recipeTime: {
     fontSize: 12,
@@ -208,16 +203,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#ff4444',
     justifyContent: 'center',
     alignItems: 'center',
   },
   removeButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   emptyState: {
@@ -225,6 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    marginTop: 60,
   },
   emptyStateEmoji: {
     fontSize: 64,

@@ -215,6 +215,24 @@ export default function AuthScreen({ route, navigation }: Props) {
                 : 'Har du redan ett konto? Logga in'}
             </Text>
           </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>eller</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity style={styles.guestButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="person-outline" size={18} color="#888" style={styles.guestButtonIcon} />
+            <Text style={styles.guestButtonText}>Fortsätt som gäst</Text>
+          </TouchableOpacity>
+
+          <View style={styles.guestInfo}>
+            <Ionicons name="information-circle-outline" size={16} color="#aaa" />
+            <Text style={styles.guestInfoText}>
+              Som gäst kan du bläddra bland recept. Favoriter sparas lokalt och synkas inte mellan enheter.
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -363,5 +381,54 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontSize: 15,
     fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e0d8d0',
+  },
+  dividerText: {
+    color: '#aaa',
+    fontSize: 13,
+    marginHorizontal: 12,
+  },
+  guestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f0ea',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e0d8d0',
+  },
+  guestButtonIcon: {
+    marginRight: 8,
+  },
+  guestButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  guestInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f9f6f2',
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+    marginBottom: 8,
+  },
+  guestInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#aaa',
+    lineHeight: 18,
   },
 });

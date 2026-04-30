@@ -21,11 +21,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.dinolisk.snabbmat"
     },
     "web": {
       "favicon": "",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9a009320-b426-4481-8208-f67a804a0ce5"
+      }
+    },
+    "owner": "dinolisks-organization"
   }
 }

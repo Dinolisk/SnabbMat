@@ -89,31 +89,46 @@ export default function ProfileScreen({ navigation }: Props) {
 
         {/* Login / Register buttons for guests */}
         {!isLoggedIn && (
-          <View style={styles.authButtons}>
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => navigation.navigate('Auth', { mode: 'login' })}
-            >
-              <Ionicons name="log-in-outline" size={20} color="#fff" style={styles.authButtonIcon} />
-              <Text style={styles.loginButtonText}>Logga in</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.registerButton}
-              onPress={() => navigation.navigate('Auth', { mode: 'register' })}
-            >
-              <Ionicons name="person-add-outline" size={20} color="#2E7D32" style={styles.authButtonIcon} />
-              <Text style={styles.registerButtonText}>Skapa konto</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <View style={styles.authButtons}>
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={() => navigation.navigate('Auth', { mode: 'login' })}
+              >
+                <Ionicons name="log-in-outline" size={20} color="#fff" style={styles.authButtonIcon} />
+                <Text style={styles.loginButtonText}>Logga in</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={() => navigation.navigate('Auth', { mode: 'register' })}
+              >
+                <Ionicons name="person-add-outline" size={20} color="#2E7D32" style={styles.authButtonIcon} />
+                <Text style={styles.registerButtonText}>Skapa konto</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.guestInfoBox}>
+              <Ionicons name="person-outline" size={20} color="#FF9F4A" />
+              <View style={styles.guestInfoContent}>
+                <Text style={styles.guestInfoTitle}>Du surfar som gäst</Text>
+                <Text style={styles.guestInfoText}>
+                  Du kan bläddra bland alla recept och spara favoriter lokalt. Logga in för att synka dina favoriter och inställningar mellan enheter.
+                </Text>
+              </View>
+            </View>
+          </>
         )}
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() => navigation.getParent()?.navigate('Favoriter')}
+          >
             <Text style={styles.statNumber}>{favorites.length}</Text>
             <Text style={styles.statLabel}>Favoriter</Text>
-          </View>
-          <View style={styles.statItem}>
+            <Ionicons name="chevron-forward" size={12} color="#4A7C59" style={{ marginTop: 2 }} />
+          </TouchableOpacity>
+          <View style={[styles.statItem, styles.statItemBorder]}>
             <Text style={styles.statNumber}>—</Text>
             <Text style={styles.statLabel}>Recept gjorda</Text>
           </View>
@@ -243,6 +258,33 @@ const styles = StyleSheet.create({
   authButtonIcon: {
     marginRight: 6,
   },
+  guestInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fff8f0',
+    borderRadius: 12,
+    marginHorizontal: 15,
+    marginTop: 0,
+    marginBottom: 8,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#ffe0b2',
+  },
+  guestInfoContent: {
+    flex: 1,
+  },
+  guestInfoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#e67e22',
+    marginBottom: 4,
+  },
+  guestInfoText: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
@@ -258,6 +300,11 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
+  },
+  statItemBorder: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#f0ebe3',
   },
   statNumber: {
     fontSize: 24,
