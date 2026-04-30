@@ -6,25 +6,60 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { StackScreenProps } from '@react-navigation/stack';
 import { PageContainer } from '../components/PageContainer';
+import { useAuth } from '../context/AuthContext';
+import { useRecipeContext } from '../context/RecipeContext';
 
-export default function ProfileScreen() {
+type ProfileStackParamList = {
+  ProfileMain: undefined;
+  Auth: { mode?: 'login' | 'register' };
+};
+
+type Props = StackScreenProps<ProfileStackParamList, 'ProfileMain'>;
+
+export default function ProfileScreen({ navigation }: Props) {
+  const { user, isLoggedIn, logout } = useAuth();
+  const { favorites } = useRecipeContext();
+
   const handleSettingPress = (setting: string) => {
     Alert.alert('Inställning', `${setting} kommer snart!`);
   };
 
-  const renderSettingItem = (icon: keyof typeof Ionicons.glyphMap, title: string, subtitle?: string) => (
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Är du säker på att du vill logga ut?')) {
+        await logout();
+      }
+    } else {
+      Alert.alert('Logga ut', 'Är du säker på att du vill logga ut?', [
+        { text: 'Avbryt', style: 'cancel' },
+        { text: 'Logga ut', style: 'destructive', onPress: async () => { await logout(); } },
+      ]);
+    }
+  };
+
+  const renderSettingItem = (
+    icon: keyof typeof Ionicons.glyphMap,
+    title: string,
+    subtitle?: string,
+    onPress?: () => void,
+    destructive?: boolean,
+  ) => (
     <TouchableOpacity
       style={styles.settingItem}
-      onPress={() => handleSettingPress(title)}
+      onPress={onPress ?? (() => handleSettingPress(title))}
     >
-      <View style={styles.settingIcon}>
-        <Ionicons name={icon} size={24} color="#2E7D32" />
+      <View style={[styles.settingIcon, destructive && styles.settingIconDestructive]}>
+        <Ionicons name={icon} size={24} color={destructive ? '#c0392b' : '#2E7D32'} />
       </View>
       <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
+        <Text style={[styles.settingTitle, destructive && styles.settingTitleDestructive]}>
+          {title}
+        </Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
       <Ionicons name="chevron-forward" size={20} color="#ccc" />
@@ -34,64 +69,103 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <PageContainer>
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>👨‍🍳</Text>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>👨‍🍳</Text>
+          </View>
+          {isLoggedIn && user ? (
+            <>
+              <Text style={styles.userName}>{user.name}</Text>
+              <Text style={styles.userEmail}>{user.email}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.userName}>Gäst</Text>
+              <Text style={styles.userEmail}>Logga in för att spara favoriter</Text>
+            </>
+          )}
         </View>
-        <Text style={styles.userName}>Kock</Text>
-        <Text style={styles.userEmail}>kock@snabbmat.se</Text>
-      </View>
 
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>12</Text>
-          <Text style={styles.statLabel}>Recept gjorda</Text>
+        {/* Login / Register buttons for guests */}
+        {!isLoggedIn && (
+          <View style={styles.authButtons}>
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={() => navigation.navigate('Auth', { mode: 'login' })}
+            >
+              <Ionicons name="log-in-outline" size={20} color="#fff" style={styles.authButtonIcon} />
+              <Text style={styles.loginButtonText}>Logga in</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.registerButton}
+              onPress={() => navigation.navigate('Auth', { mode: 'register' })}
+            >
+              <Ionicons name="person-add-outline" size={20} color="#2E7D32" style={styles.authButtonIcon} />
+              <Text style={styles.registerButtonText}>Skapa konto</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{favorites.length}</Text>
+            <Text style={styles.statLabel}>Favoriter</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>—</Text>
+            <Text style={styles.statLabel}>Recept gjorda</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>—</Text>
+            <Text style={styles.statLabel}>Veckor aktiv</Text>
+          </View>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>5</Text>
-          <Text style={styles.statLabel}>Favoriter</Text>
+
+        {/* Settings */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Inställningar</Text>
+          {renderSettingItem('notifications', 'Notifieringar', 'Få påminnelser om måltider')}
+          {renderSettingItem('language', 'Språk', 'Svenska')}
+          {renderSettingItem('theme', 'Tema', 'Ljust tema')}
+          {renderSettingItem('units', 'Måttenheter', 'Metriska enheter')}
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>3</Text>
-          <Text style={styles.statLabel}>Veckor aktiv</Text>
+
+        {/* App Info */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Om appen</Text>
+          {renderSettingItem('information-circle', 'Om SnabbMat', 'Version 1.0.0')}
+          {renderSettingItem('help-circle', 'Hjälp & Support')}
+          {renderSettingItem('star', 'Betygsätt appen')}
+          {renderSettingItem('share', 'Dela med vänner')}
         </View>
-      </View>
 
-      {/* Settings */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Inställningar</Text>
-        
-        {renderSettingItem('notifications', 'Notifieringar', 'Få påminnelser om måltider')}
-        {renderSettingItem('language', 'Språk', 'Svenska')}
-        {renderSettingItem('theme', 'Tema', 'Ljust tema')}
-        {renderSettingItem('units', 'Måttenheter', 'Metriska enheter')}
-      </View>
+        {/* Account */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Konto</Text>
+          {isLoggedIn ? (
+            <>
+              {renderSettingItem('person', 'Redigera profil')}
+              {renderSettingItem('key', 'Ändra lösenord')}
+              {renderSettingItem('log-out', 'Logga ut', undefined, handleLogout, true)}
+            </>
+          ) : (
+            <>
+              {renderSettingItem('log-in', 'Logga in', undefined, () =>
+                navigation.navigate('Auth', { mode: 'login' }),
+              )}
+              {renderSettingItem('person-add', 'Skapa konto', undefined, () =>
+                navigation.navigate('Auth', { mode: 'register' }),
+              )}
+            </>
+          )}
+        </View>
 
-      {/* App Info */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Om appen</Text>
-        
-        {renderSettingItem('information-circle', 'Om SnabbMat', 'Version 1.0.0')}
-        {renderSettingItem('help-circle', 'Hjälp & Support')}
-        {renderSettingItem('star', 'Betygsätt appen')}
-        {renderSettingItem('share', 'Dela med vänner')}
-      </View>
-
-      {/* Account */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Konto</Text>
-        
-        {renderSettingItem('person', 'Redigera profil')}
-        {renderSettingItem('key', 'Ändra lösenord')}
-        {renderSettingItem('log-out', 'Logga ut', undefined)}
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>SnabbMat v1.0.0</Text>
-        <Text style={styles.footerText}>© 2024 SnabbMat</Text>
-      </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>SnabbMat v1.0.0</Text>
+          <Text style={styles.footerText}>© 2024 SnabbMat</Text>
+        </View>
       </PageContainer>
     </ScrollView>
   );
@@ -130,6 +204,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'white',
     opacity: 0.9,
+  },
+  authButtons: {
+    flexDirection: 'row',
+    margin: 15,
+    gap: 12,
+  },
+  loginButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#2E7D32',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  registerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#2E7D32',
+  },
+  registerButtonText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  authButtonIcon: {
+    marginRight: 6,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -191,6 +303,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
+  settingIconDestructive: {
+    backgroundColor: '#fdecea',
+  },
   settingContent: {
     flex: 1,
   },
@@ -199,6 +314,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     marginBottom: 2,
+  },
+  settingTitleDestructive: {
+    color: '#c0392b',
   },
   settingSubtitle: {
     fontSize: 14,

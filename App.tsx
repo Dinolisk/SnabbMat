@@ -11,23 +11,36 @@ import RecipeListScreen from './src/screens/RecipeListScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RecipeDetailScreen from './src/screens/RecipeDetailScreen';
+import AuthScreen from './src/screens/AuthScreen';
 
 // Import context
 import { RecipeProvider } from './src/context/RecipeContext';
+import { AuthProvider } from './src/context/AuthContext';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const RecipeStackNavigator = createStackNavigator<{
+  RecipeList: undefined;
+  RecipeDetail: { recipeId: string };
+}>();
+const FavoritesStackNavigator = createStackNavigator<{
+  FavoritesMain: undefined;
+  RecipeDetail: { recipeId: string };
+}>();
+const ProfileStackNavigator = createStackNavigator<{
+  ProfileMain: undefined;
+  Auth: { mode?: 'login' | 'register' };
+}>();
 
 // Stack Navigator for Recipe List
 function RecipeStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
+    <RecipeStackNavigator.Navigator>
+      <RecipeStackNavigator.Screen 
         name="RecipeList" 
         component={RecipeListScreen} 
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
+      <RecipeStackNavigator.Screen 
         name="RecipeDetail" 
         component={RecipeDetailScreen}
         options={{
@@ -41,21 +54,44 @@ function RecipeStack() {
           },
         }}
       />
-    </Stack.Navigator>
+    </RecipeStackNavigator.Navigator>
   );
 }
 
 
+// Stack Navigator for Profile (includes Auth screen)
+function ProfileStack() {
+  return (
+    <ProfileStackNavigator.Navigator>
+      <ProfileStackNavigator.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <ProfileStackNavigator.Screen
+        name="Auth"
+        component={AuthScreen}
+        options={{
+          title: '',
+          headerStyle: { backgroundColor: '#2E7D32' },
+          headerTintColor: '#fff',
+          presentation: 'modal',
+        }}
+      />
+    </ProfileStackNavigator.Navigator>
+  );
+}
+
 // Stack Navigator for Favorites
 function FavoritesStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
+    <FavoritesStackNavigator.Navigator>
+      <FavoritesStackNavigator.Screen 
         name="FavoritesMain" 
         component={FavoritesScreen} 
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
+      <FavoritesStackNavigator.Screen 
         name="RecipeDetail" 
         component={RecipeDetailScreen}
         options={{
@@ -69,7 +105,7 @@ function FavoritesStack() {
           },
         }}
       />
-    </Stack.Navigator>
+    </FavoritesStackNavigator.Navigator>
   );
 }
 
@@ -79,6 +115,7 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF4E6' }}>
+      <AuthProvider>
       <RecipeProvider>
         <NavigationContainer>
           <StatusBar style="auto" />
@@ -134,15 +171,16 @@ export default function App() {
                 component={FavoritesStack} 
                 options={{ headerShown: false }}
               />
-              <Tab.Screen 
-                name="Profil" 
-                component={ProfileScreen} 
+              <Tab.Screen
+                name="Profil"
+                component={ProfileStack}
                 options={{ headerShown: false }}
               />
             </Tab.Navigator>
           </View>
         </NavigationContainer>
       </RecipeProvider>
+      </AuthProvider>
     </View>
   );
 }
