@@ -23,18 +23,9 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
 
   const handlePress = () => {
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1,    duration: 100, useNativeDriver: true }),
     ]).start();
-    
     onPress(recipe);
   };
 
@@ -44,14 +35,18 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   };
 
   const hasImageUrl = recipe.image.startsWith('http://') || recipe.image.startsWith('https://');
-  React.useEffect(() => {
-    setImageFailed(false);
-  }, [recipe.image]);
+  React.useEffect(() => { setImageFailed(false); }, [recipe.image]);
 
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity style={styles.card} onPress={handlePress}>
-        <View style={styles.imageContainer}>
+
+        {/*
+          imageColumn sträcker sig till kortets fulla höjd (flex default stretch i row).
+          Inuti renderas bilden/emojin som en fast 90×90-kvadrat centrerad i kolumnen.
+          Kolumnens grå bakgrund fyller hela höjden → inget dödutrymme, konsekvent storlek.
+        */}
+        <View style={styles.imageColumn}>
           {hasImageUrl && !imageFailed ? (
             <Image
               source={{ uri: recipe.image }}
@@ -62,37 +57,31 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
           ) : (
             <Text style={styles.emoji}>{recipe.image}</Text>
           )}
-          <TouchableOpacity 
-            style={styles.favoriteButton}
-            onPress={handleFavoritePress}
-          >
-            <Ionicons 
-              name={isFavorite(recipe.id) ? 'heart' : 'heart-outline'} 
-              size={20} 
-              color={isFavorite(recipe.id) ? '#FF6B6B' : '#999'} 
+          <TouchableOpacity style={styles.favoriteButton} onPress={handleFavoritePress}>
+            <Ionicons
+              name={isFavorite(recipe.id) ? 'heart' : 'heart-outline'}
+              size={20}
+              color={isFavorite(recipe.id) ? '#FF6B6B' : '#999'}
             />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.content}>
           <Text style={styles.title}>{recipe.title}</Text>
           <Text style={styles.description} numberOfLines={2}>
             {recipe.description}
           </Text>
-          
+
           <View style={styles.meta}>
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={14} color="#4A7C59" />
-              <Text style={styles.metaText}>
-                {recipe.prepTime + recipe.cookTime} min
-              </Text>
+              <Text style={styles.metaText}>{recipe.prepTime + recipe.cookTime} min</Text>
             </View>
-            
             <View style={[styles.difficultyBadge, getDifficultyStyle(recipe.difficulty)]}>
               <Text style={styles.difficultyText}>{recipe.difficulty}</Text>
             </View>
           </View>
-          
+
           <View style={styles.footer}>
             <Text style={styles.category}>{recipe.category}</Text>
             <View style={styles.servings}>
@@ -101,6 +90,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
             </View>
           </View>
         </View>
+
       </TouchableOpacity>
     </Animated.View>
   );
@@ -108,14 +98,10 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
 
 function getDifficultyStyle(difficulty: string) {
   switch (difficulty) {
-    case 'Lätt':
-      return { backgroundColor: '#E8F5E8' };
-    case 'Medel':
-      return { backgroundColor: '#FFF4E6' };
-    case 'Svår':
-      return { backgroundColor: '#FFEBEE' };
-    default:
-      return { backgroundColor: '#F5F5F5' };
+    case 'Lätt':  return { backgroundColor: '#E8F5E8' };
+    case 'Medel': return { backgroundColor: '#FFF4E6' };
+    case 'Svår':  return { backgroundColor: '#FFEBEE' };
+    default:      return { backgroundColor: '#F5F5F5' };
   }
 }
 
@@ -134,20 +120,22 @@ const styles = StyleSheet.create({
     elevation: 5,
     overflow: 'hidden',
   },
-  imageContainer: {
+  // Full-height grå kolumn — sträcker sig med kortets höjd, centrerar bilden
+  imageColumn: {
     width: 100,
-    height: 120,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F0F2F5',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
+  // Fast 84×84-kvadrat inuti kolumnen — konsekvent på alla kort
   recipeImage: {
-    width: '100%',
-    height: '100%',
+    width: 84,
+    height: 84,
+    borderRadius: 10,
   },
   emoji: {
-    fontSize: 40,
+    fontSize: 42,
   },
   favoriteButton: {
     position: 'absolute',

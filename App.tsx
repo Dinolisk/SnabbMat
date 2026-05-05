@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -144,14 +144,25 @@ export default function App() {
                 },
                 tabBarActiveTintColor: '#fff',
                 tabBarInactiveTintColor: '#C8E6C9',
-                tabBarStyle: {
-                  backgroundColor: '#2E7D32',
-                  borderTopColor: '#4CAF50',
-                  borderTopWidth: 1,
-                  marginHorizontal: 20,
-                  borderTopLeftRadius: 15,
-                  borderTopRightRadius: 15,
-                },
+                tabBarStyle: Platform.select({
+                  web: {
+                    backgroundColor: '#2E7D32',
+                    borderTopColor: '#4CAF50',
+                    borderTopWidth: 1,
+                    borderTopLeftRadius: 10,
+                    borderTopRightRadius: 10,
+                    maxWidth: 1320,
+                    alignSelf: 'center',
+                    width: '100%',
+                  },
+                  default: {
+                    backgroundColor: '#2E7D32',
+                    borderTopColor: '#4CAF50',
+                    borderTopWidth: 1,
+                    borderTopLeftRadius: 10,
+                    borderTopRightRadius: 10,
+                  },
+                }),
                 headerStyle: {
                   backgroundColor: '#2E7D32',
                 },
