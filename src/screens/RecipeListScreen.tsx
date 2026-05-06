@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,20 @@ import { PageContainer } from '../components/PageContainer';
 
 export default function RecipeListScreen({ navigation }: any) {
   const [visibleRecipes, setVisibleRecipes] = useState(12);
+  const categoriesScrollRef = useRef<ScrollView>(null);
+  const [categoriesScrollX, setCategoriesScrollX] = useState(0);
+  const [categoriesContainerWidth, setCategoriesContainerWidth] = useState(0);
+  const [categoriesContentWidth, setCategoriesContentWidth] = useState(0);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    const next = direction === 'left'
+      ? Math.max(0, categoriesScrollX - 220)
+      : categoriesScrollX + 220;
+    categoriesScrollRef.current?.scrollTo({ x: next, animated: true });
+  };
+
+  const canScrollLeft = categoriesScrollX > 4;
+  const canScrollRight = categoriesScrollX + categoriesContainerWidth < categoriesContentWidth - 4;
 
   const {
     searchQuery,
@@ -181,16 +195,41 @@ export default function RecipeListScreen({ navigation }: any) {
                 )}
               </View>
 
-              {/* Kategorier - swipe vänster/höger med fingret */}
+              {/* Kategorier - swipe på mobil, pilar på web/desktop */}
               <View style={styles.categoriesWrapper}>
                 <Text style={styles.categoriesLabel}>Kategorier</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filtersScrollContent}
-                >
-                  {mergedCategories.map(renderCategoryFilter)}
-                </ScrollView>
+                <View style={styles.categoriesRow}>
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity
+                      style={[styles.categoryArrow, !canScrollLeft && styles.categoryArrowDisabled]}
+                      onPress={() => scrollCategories('left')}
+                      disabled={!canScrollLeft}
+                    >
+                      <Text style={styles.categoryArrowText}>‹</Text>
+                    </TouchableOpacity>
+                  )}
+                  <ScrollView
+                    ref={categoriesScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filtersScrollContent}
+                    scrollEventThrottle={16}
+                    onScroll={(e) => setCategoriesScrollX(e.nativeEvent.contentOffset.x)}
+                    onContentSizeChange={(w) => setCategoriesContentWidth(w)}
+                    onLayout={(e) => setCategoriesContainerWidth(e.nativeEvent.layout.width)}
+                  >
+                    {mergedCategories.map(renderCategoryFilter)}
+                  </ScrollView>
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity
+                      style={[styles.categoryArrow, !canScrollRight && styles.categoryArrowDisabled]}
+                      onPress={() => scrollCategories('right')}
+                      disabled={!canScrollRight}
+                    >
+                      <Text style={styles.categoryArrowText}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               {/* Recepträknare */}
@@ -305,6 +344,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 2,
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#C8E6C9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  categoryArrowDisabled: {
+    opacity: 0.3,
+  },
+  categoryArrowText: {
+    fontSize: 20,
+    lineHeight: 22,
+    color: '#1B5E20',
+    fontWeight: '700',
   },
   filtersScrollContent: {
     paddingVertical: 10,
