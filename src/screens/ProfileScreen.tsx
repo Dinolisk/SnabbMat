@@ -179,7 +179,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>SnabbMat v1.0.0</Text>
-          <Text style={styles.footerText}>© 2024 SnabbMat</Text>
+          <Text style={styles.footerText}>© 2026 SnabbMat</Text>
         </View>
       </PageContainer>
     </ScrollView>
